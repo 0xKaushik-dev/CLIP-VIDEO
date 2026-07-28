@@ -8,16 +8,23 @@ import { MultiPublishModal } from './components/MultiPublishModal';
 import { ChannelManager } from './components/ChannelManager';
 import { Dashboard } from './components/Dashboard';
 import { AuthModal } from './components/AuthModal';
-import { INITIAL_CLIPS } from './lib/mockData';
 import { AIService } from './lib/aiService';
 import { AuthService } from './lib/authService';
 import type { ViralClip, UserProfile, ClipGenerationSettings } from './types';
 
 export function App() {
   const [activeTab, setActiveTab] = useState<'generator' | 'clips' | 'channels' | 'analytics'>('generator');
-  const [user, setUser] = useState<UserProfile>(() => AuthService.getSession());
-  const [clips, setClips] = useState<ViralClip[]>(INITIAL_CLIPS);
-  const [sourceVideoTitle, setSourceVideoTitle] = useState<string>('How AI Agents Will Build million-dollar SaaS Companies in 2026');
+  
+  // Real Persistent User Session (Starts unauthenticated or loads active session)
+  const [user, setUser] = useState<UserProfile | null>(() => AuthService.getSession());
+  
+  // Real User Generated Clips (Starts empty, persisted per user)
+  const [clips, setClips] = useState<ViralClip[]>(() => {
+    const active = AuthService.getSession();
+    return active ? AuthService.getUserClips(active.id) : [];
+  });
+  
+  const [sourceVideoTitle, setSourceVideoTitle] = useState<string>('');
 
   // Modal States
   const [isProcessing, setIsProcessing] = useState(false);
@@ -28,15 +35,22 @@ export function App() {
   const [publishingClips, setPublishingClips] = useState<ViralClip[] | null>(null);
   const [showAuthModal, setShowAuthModal] = useState(false);
 
-  // Sync user session changes to storage
+  // Sync user session & per-user clips storage
   useEffect(() => {
-    if (user.isLoggedIn) {
+    if (user) {
       AuthService.saveSession(user);
+      AuthService.saveUserClips(user.id, clips);
     }
-  }, [user]);
+  }, [user, clips]);
 
-  // Handle URL & Settings Processing Submission (Unlimited generation!)
+  // Handle URL & Settings Processing Submission
   const handleStartProcessing = async (url: string, settings: ClipGenerationSettings) => {
+    // If not signed in, prompt auth first
+    if (!user || !user.isLoggedIn) {
+      setShowAuthModal(true);
+      return;
+    }
+
     setIsProcessing(true);
     setProcessingProgress(5);
     setProcessingStage('Connecting to YouTube API...');
@@ -52,7 +66,10 @@ export function App() {
       );
 
       setSourceVideoTitle(result.sourceVideo.title);
-      setClips([...result.clips, ...clips]);
+      const updated = [...result.clips, ...clips];
+      setClips(updated);
+      AuthService.saveUserClips(user.id, updated);
+      
       setIsProcessing(false);
       setActiveTab('clips');
     } catch (err) {
@@ -62,44 +79,57 @@ export function App() {
 
   // Save Edited Clip
   const handleSaveClip = (updatedClip: ViralClip) => {
-    setClips(clips.map(c => c.id === updatedClip.id ? updatedClip : c));
+    const updated = clips.map(c => c.id === updatedClip.id ? updatedClip : c);
+    setClips(updated);
+    if (user) AuthService.saveUserClips(user.id, updated);
     setEditingClip(null);
   };
 
   // Delete Clip
   const handleDeleteClip = (id: string) => {
-    setClips(clips.filter(c => c.id !== id));
+    const updated = clips.filter(c => c.id !== id);
+    setClips(updated);
+    if (user) AuthService.saveUserClips(user.id, updated);
   };
 
   // Handle Publish Completion
   const handlePublishComplete = (publishedClipIds: string[]) => {
-    setClips(clips.map(c => {
+    const updated = clips.map(c => {
       if (publishedClipIds.includes(c.id)) {
         return {
           ...c,
-          status: 'published',
-          publishedPlatforms: ['youtube', 'instagram']
+          status: 'published' as const,
+          publishedPlatforms: ['youtube', 'instagram'] as any
         };
       }
       return c;
-    }));
+    });
+    setClips(updated);
+    if (user) AuthService.saveUserClips(user.id, updated);
     setPublishingClips(null);
   };
 
-  // Handle User Auth Login / Logout
+  // Handle User Auth Login / Signup Success
   const handleLoginSuccess = (loggedInUser: UserProfile) => {
     setUser(loggedInUser);
     setShowAuthModal(false);
+    // Load existing clips for this account
+    const userSavedClips = AuthService.getUserClips(loggedInUser.id);
+    setClips(userSavedClips);
   };
 
+  // Handle Logout
   const handleLogout = () => {
-    const loggedOut = AuthService.clearSession();
-    setUser(loggedOut);
+    AuthService.logout();
+    setUser(null);
+    setClips([]);
   };
 
   const handleLinkGoogle = () => {
-    const updated = AuthService.linkGoogleAccount(user);
-    setUser(updated);
+    if (user) {
+      const updated = AuthService.linkGoogleAccount(user);
+      setUser(updated);
+    }
   };
 
   return (
@@ -107,7 +137,7 @@ export function App() {
       
       {/* Top Header Navbar */}
       <Navbar
-        user={user}
+        user={user || { id: 'guest', name: 'Guest User', email: '', avatar: '', isLoggedIn: false }}
         activeTab={activeTab}
         setActiveTab={setActiveTab}
         onOpenAuth={() => setShowAuthModal(true)}
@@ -126,7 +156,7 @@ export function App() {
               isLoading={isProcessing}
             />
 
-            {/* Quick Preview Grid below generator */}
+            {/* User Generated Clips Grid (Starts empty until user generates) */}
             <div className="pt-4">
               <ClipGrid
                 clips={clips}
@@ -207,7 +237,7 @@ export function App() {
         <div className="max-w-7xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-4">
           <div className="flex items-center gap-2">
             <span className="font-bold text-zinc-300 font-heading">ShortsForge.AI</span>
-            <span>— Unlimited YouTube Shorts & Instagram Reels Clipper & Publisher</span>
+            <span>— Real YouTube Shorts & Instagram Reels Clipper & Publisher</span>
           </div>
           <p>© 2026 ShortsForge AI Inc. All rights reserved.</p>
         </div>

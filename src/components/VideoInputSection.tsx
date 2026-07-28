@@ -1,7 +1,6 @@
 import React, { useState } from 'react';
-import { SAMPLE_YOUTUBE_VIDEOS } from '../lib/mockData';
-import type { YouTubeSourceVideo, ClipGenerationSettings, AspectRatioType } from '../types';
-import { Sparkles, Clock, Play, CheckCircle2, ArrowRight, Zap, Radio, AlertCircle, Layers, Monitor, Smartphone, Square, Check, Subtitles, SlidersHorizontal } from 'lucide-react';
+import type { ClipGenerationSettings, AspectRatioType } from '../types';
+import { Sparkles, Clock, CheckCircle2, Zap, Layers, Monitor, Smartphone, Square, Check, Subtitles, SlidersHorizontal, AlertCircle } from 'lucide-react';
 
 interface VideoInputSectionProps {
   onStartProcessing: (url: string, settings: ClipGenerationSettings) => void;
@@ -41,23 +40,8 @@ export const VideoInputSection: React.FC<VideoInputSectionProps> = ({
     onStartProcessing(url.trim(), settings);
   };
 
-  const handleSelectSample = (sample: YouTubeSourceVideo) => {
-    setUrl(sample.url);
-    setErrorMessage('');
-    
-    const settings: ClipGenerationSettings = {
-      clipCount,
-      aspectRatio,
-      subtitlesEnabled,
-      targetLength,
-      customLengthSeconds
-    };
-
-    onStartProcessing(sample.url, settings);
-  };
-
   return (
-    <section className="relative pt-8 pb-12 px-4 max-w-6xl mx-auto">
+    <section className="relative pt-8 pb-8 px-4 max-w-6xl mx-auto">
       
       {/* Background Decorative Gradients */}
       <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[600px] h-[300px] bg-gradient-to-tr from-purple-600/20 via-pink-600/20 to-cyan-500/10 blur-[100px] pointer-events-none -z-10 rounded-full" />
@@ -321,57 +305,6 @@ export const VideoInputSection: React.FC<VideoInputSectionProps> = ({
             </div>
           </div>
         </form>
-      </div>
-
-      {/* Instant Demo Quick Picks */}
-      <div className="mt-10 max-w-4xl mx-auto space-y-4">
-        <div className="flex items-center justify-between text-xs font-bold text-zinc-400">
-          <span className="flex items-center gap-2">
-            <Radio className="w-4 h-4 text-pink-400 animate-pulse" />
-            Or try one of these viral sample videos instantly:
-          </span>
-          <span className="text-zinc-500">1-Click Demo</span>
-        </div>
-
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          {SAMPLE_YOUTUBE_VIDEOS.map((sample) => (
-            <div
-              key={sample.id}
-              onClick={() => handleSelectSample(sample)}
-              className="glass-panel p-3 rounded-2xl border border-white/10 hover:border-purple-500/50 hover:bg-zinc-900/80 transition-all cursor-pointer group flex flex-col justify-between space-y-3"
-            >
-              <div className="relative aspect-video rounded-xl overflow-hidden bg-zinc-950">
-                <img
-                  src={sample.thumbnailUrl}
-                  alt={sample.title}
-                  className="w-full h-full object-cover group-hover:scale-105 transition duration-300"
-                />
-                <div className="absolute inset-0 bg-black/40 group-hover:bg-black/20 transition flex items-center justify-center">
-                  <div className="w-9 h-9 rounded-full bg-purple-600/90 text-white flex items-center justify-center shadow-lg group-hover:scale-110 transition">
-                    <Play className="w-4 h-4 fill-current ml-0.5" />
-                  </div>
-                </div>
-                <span className="absolute bottom-2 right-2 px-1.5 py-0.5 rounded bg-black/80 text-[10px] text-white font-mono">
-                  {sample.formattedDuration}
-                </span>
-              </div>
-
-              <div className="space-y-1">
-                <h4 className="text-xs font-bold text-white line-clamp-2 group-hover:text-purple-300 transition">
-                  {sample.title}
-                </h4>
-                <p className="text-[11px] text-zinc-400">{sample.channelName}</p>
-              </div>
-
-              <div className="flex items-center justify-between text-[10px] text-purple-400 font-semibold pt-1 border-t border-white/5">
-                <span>{sample.clipsGenerated} Shorts Ready</span>
-                <span className="flex items-center gap-1 group-hover:translate-x-1 transition">
-                  Clip Now <ArrowRight className="w-3 h-3" />
-                </span>
-              </div>
-            </div>
-          ))}
-        </div>
       </div>
 
     </section>
