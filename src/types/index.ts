@@ -115,4 +115,8 @@ export interface UserProfile {
   email: string;
   avatar: string;
   isLoggedIn: boolean;
+  authProvider?: 'google' | 'email';
+  isGoogleLinked?: boolean;
+  emailVerified?: boolean;
+  createdAt?: string;
 }

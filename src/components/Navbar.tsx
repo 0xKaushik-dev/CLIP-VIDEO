@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import type { UserProfile } from '../types';
-import { Scissors, Sparkles, Share2, BarChart2, ChevronDown, LogOut, LogIn } from 'lucide-react';
+import { Scissors, Sparkles, Share2, BarChart2, ChevronDown, LogOut, LogIn, ShieldCheck, Link2 } from 'lucide-react';
 
 interface NavbarProps {
   user: UserProfile;
@@ -8,6 +8,7 @@ interface NavbarProps {
   setActiveTab: (tab: 'generator' | 'clips' | 'channels' | 'analytics') => void;
   onOpenAuth: () => void;
   onLogout: () => void;
+  onLinkGoogle: () => void;
 }
 
 export const Navbar: React.FC<NavbarProps> = ({
@@ -15,7 +16,8 @@ export const Navbar: React.FC<NavbarProps> = ({
   activeTab,
   setActiveTab,
   onOpenAuth,
-  onLogout
+  onLogout,
+  onLinkGoogle
 }) => {
   const [showProfileMenu, setShowProfileMenu] = useState(false);
 
@@ -39,7 +41,7 @@ export const Navbar: React.FC<NavbarProps> = ({
                 Unlimited
               </span>
             </div>
-            <p className="text-[11px] text-zinc-400 hidden sm:block">Automated YouTube Shorts Clipper</p>
+            <p className="text-[11px] text-zinc-400 hidden sm:block">Automated YouTube Shorts & Reels Clipper</p>
           </div>
         </div>
 
@@ -113,7 +115,7 @@ export const Navbar: React.FC<NavbarProps> = ({
 
               {/* Profile Menu Dropdown */}
               {showProfileMenu && (
-                <div className="absolute right-0 mt-2 w-56 glass-card rounded-2xl p-4 shadow-2xl z-50 border border-white/15 animate-in fade-in slide-in-from-top-2">
+                <div className="absolute right-0 mt-2 w-64 glass-card rounded-2xl p-4 shadow-2xl z-50 border border-white/15 animate-in fade-in slide-in-from-top-2">
                   <div className="flex items-center gap-3 pb-3 border-b border-white/10">
                     <img src={user.avatar} alt={user.name} className="w-10 h-10 rounded-xl object-cover" />
                     <div className="overflow-hidden">
@@ -122,10 +124,27 @@ export const Navbar: React.FC<NavbarProps> = ({
                     </div>
                   </div>
 
-                  <div className="py-2 border-b border-white/10 text-xs">
-                    <div className="flex items-center justify-between text-emerald-400 font-semibold py-1">
-                      <span>Access Status:</span>
-                      <span className="font-mono bg-emerald-500/20 px-2 py-0.5 rounded text-[10px]">UNLIMITED</span>
+                  <div className="py-2.5 space-y-2 border-b border-white/10 text-xs">
+                    <div className="flex items-center justify-between text-zinc-300">
+                      <span>Auth Provider:</span>
+                      <span className="font-semibold text-purple-300 capitalize flex items-center gap-1">
+                        <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" />
+                        {user.authProvider || 'Google'}
+                      </span>
+                    </div>
+
+                    <div className="flex items-center justify-between text-zinc-300">
+                      <span>Google Linked:</span>
+                      {user.isGoogleLinked ? (
+                        <span className="text-emerald-400 font-mono text-[10px] font-bold">LINKED ✓</span>
+                      ) : (
+                        <button
+                          onClick={onLinkGoogle}
+                          className="text-[10px] text-purple-400 hover:underline flex items-center gap-1 font-bold"
+                        >
+                          <Link2 className="w-3 h-3" /> Link Google
+                        </button>
+                      )}
                     </div>
                   </div>
 
@@ -143,10 +162,10 @@ export const Navbar: React.FC<NavbarProps> = ({
           ) : (
             <button
               onClick={onOpenAuth}
-              className="px-4 py-2 rounded-xl bg-purple-600 hover:bg-purple-500 text-white text-xs font-bold shadow transition flex items-center gap-2"
+              className="px-4 py-2 rounded-xl bg-gradient-to-r from-purple-600 to-pink-600 hover:opacity-95 text-white text-xs font-bold shadow-lg transition flex items-center gap-2"
             >
               <LogIn className="w-4 h-4" />
-              <span>Sign In / Sign Up</span>
+              <span>Continue with Google</span>
             </button>
           )}
         </div>

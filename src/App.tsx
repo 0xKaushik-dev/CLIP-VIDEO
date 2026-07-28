@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Navbar } from './components/Navbar';
 import { VideoInputSection } from './components/VideoInputSection';
 import { ClipProcessingModal } from './components/ClipProcessingModal';
@@ -8,13 +8,14 @@ import { MultiPublishModal } from './components/MultiPublishModal';
 import { ChannelManager } from './components/ChannelManager';
 import { Dashboard } from './components/Dashboard';
 import { AuthModal } from './components/AuthModal';
-import { INITIAL_CLIPS, CURRENT_USER } from './lib/mockData';
+import { INITIAL_CLIPS } from './lib/mockData';
 import { AIService } from './lib/aiService';
+import { AuthService } from './lib/authService';
 import type { ViralClip, UserProfile, ClipGenerationSettings } from './types';
 
 export function App() {
   const [activeTab, setActiveTab] = useState<'generator' | 'clips' | 'channels' | 'analytics'>('generator');
-  const [user, setUser] = useState<UserProfile>(CURRENT_USER);
+  const [user, setUser] = useState<UserProfile>(() => AuthService.getSession());
   const [clips, setClips] = useState<ViralClip[]>(INITIAL_CLIPS);
   const [sourceVideoTitle, setSourceVideoTitle] = useState<string>('How AI Agents Will Build million-dollar SaaS Companies in 2026');
 
@@ -26,6 +27,13 @@ export function App() {
   const [editingClip, setEditingClip] = useState<ViralClip | null>(null);
   const [publishingClips, setPublishingClips] = useState<ViralClip[] | null>(null);
   const [showAuthModal, setShowAuthModal] = useState(false);
+
+  // Sync user session changes to storage
+  useEffect(() => {
+    if (user.isLoggedIn) {
+      AuthService.saveSession(user);
+    }
+  }, [user]);
 
   // Handle URL & Settings Processing Submission (Unlimited generation!)
   const handleStartProcessing = async (url: string, settings: ClipGenerationSettings) => {
@@ -85,7 +93,13 @@ export function App() {
   };
 
   const handleLogout = () => {
-    setUser({ ...user, isLoggedIn: false, name: 'Guest User', email: '' });
+    const loggedOut = AuthService.clearSession();
+    setUser(loggedOut);
+  };
+
+  const handleLinkGoogle = () => {
+    const updated = AuthService.linkGoogleAccount(user);
+    setUser(updated);
   };
 
   return (
@@ -98,6 +112,7 @@ export function App() {
         setActiveTab={setActiveTab}
         onOpenAuth={() => setShowAuthModal(true)}
         onLogout={handleLogout}
+        onLinkGoogle={handleLinkGoogle}
       />
 
       {/* Main Viewport Content */}
