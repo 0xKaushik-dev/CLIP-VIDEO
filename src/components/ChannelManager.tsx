@@ -2,11 +2,33 @@ import React, { useState } from 'react';
 import type { ConnectedChannel, PlatformId } from '../types';
 import { CONNECTED_CHANNELS } from '../lib/mockData';
 import { AuthService } from '../lib/authService';
+import { GoogleLogin } from '@react-oauth/google';
 import { RefreshCw, Trash2, ShieldCheck, RefreshCcw, ExternalLink } from 'lucide-react';
 
 export const ChannelManager: React.FC = () => {
   const [channels, setChannels] = useState<ConnectedChannel[]>(CONNECTED_CHANNELS);
   const [connectingPlatform, setConnectingPlatform] = useState<PlatformId | null>(null);
+
+  const handleGoogleChannelSuccess = async (credentialResponse: any) => {
+    try {
+      if (credentialResponse.credential) {
+        const payload = AuthService.decodeGoogleJwt(credentialResponse.credential);
+        if (payload) {
+          setChannels(channels.map(c => c.platform === 'youtube' ? {
+            ...c,
+            connected: true,
+            name: payload.name || 'YouTube Shorts Channel',
+            handle: payload.email ? `@${payload.email.split('@')[0]}` : '@YouTubeCreator',
+            avatar: payload.picture || c.avatar,
+            subscribers: 'Official Google OAuth Active',
+            lastSync: 'Authenticated via Google OAuth 2.0'
+          } : c));
+        }
+      }
+    } catch (e) {
+      console.error('Google Channel Connection Error:', e);
+    }
+  };
 
   const handleConnectOAuth = (pId: PlatformId) => {
     setConnectingPlatform(pId);
@@ -117,7 +139,7 @@ export const ChannelManager: React.FC = () => {
             )}
 
             {/* Bottom Actions: Connect via Official OAuth */}
-            <div className="pt-2">
+            <div className="space-y-3 pt-2">
               {chan.connected ? (
                 <div className="flex items-center gap-2">
                   <button
@@ -134,23 +156,41 @@ export const ChannelManager: React.FC = () => {
                   </button>
                 </div>
               ) : (
-                <button
-                  onClick={() => handleConnectOAuth(chan.platform)}
-                  disabled={connectingPlatform === chan.platform}
-                  className="w-full py-3.5 rounded-2xl bg-gradient-to-r from-purple-600 to-pink-600 hover:opacity-95 text-white text-xs font-bold shadow-lg transition flex items-center justify-center gap-2"
-                >
-                  {connectingPlatform === chan.platform ? (
-                    <>
-                      <RefreshCw className="w-4 h-4 animate-spin" />
-                      <span>Redirecting to Official OAuth...</span>
-                    </>
-                  ) : (
-                    <>
-                      <ExternalLink className="w-4 h-4" />
-                      <span>Connect {chan.platform === 'youtube' ? 'YouTube via Google OAuth 2.0' : 'Instagram via Meta Graph API'}</span>
-                    </>
+                <>
+                  {/* Google Identity Services 1-Click Popup Button for YouTube */}
+                  {chan.platform === 'youtube' && (
+                    <div className="flex justify-center w-full">
+                      <GoogleLogin
+                        onSuccess={handleGoogleChannelSuccess}
+                        onError={() => console.error('YouTube OAuth failed')}
+                        theme="filled_black"
+                        shape="pill"
+                        size="large"
+                        width="100%"
+                        text="continue_with"
+                      />
+                    </div>
                   )}
-                </button>
+
+                  {/* Standard OAuth Redirect Button */}
+                  <button
+                    onClick={() => handleConnectOAuth(chan.platform)}
+                    disabled={connectingPlatform === chan.platform}
+                    className="w-full py-3.5 rounded-2xl bg-gradient-to-r from-purple-600 to-pink-600 hover:opacity-95 text-white text-xs font-bold shadow-lg transition flex items-center justify-center gap-2"
+                  >
+                    {connectingPlatform === chan.platform ? (
+                      <>
+                        <RefreshCw className="w-4 h-4 animate-spin" />
+                        <span>Redirecting to Official OAuth...</span>
+                      </>
+                    ) : (
+                      <>
+                        <ExternalLink className="w-4 h-4" />
+                        <span>Connect {chan.platform === 'youtube' ? 'YouTube via Google OAuth 2.0' : 'Instagram via Meta Graph API'}</span>
+                      </>
+                    )}
+                  </button>
+                </>
               )}
             </div>
 
