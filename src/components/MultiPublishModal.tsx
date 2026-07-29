@@ -3,7 +3,7 @@ import type { ViralClip, PublishDestination, UserProfile } from '../types';
 import { AIService, YOUTUBE_CATEGORIES } from '../lib/aiService';
 import { AuthService } from '../lib/authService';
 import confetti from 'canvas-confetti';
-import { Share2, Sparkles, Check, Clock, Calendar, CheckCircle2, RefreshCw, Send, ShieldCheck, Tag } from 'lucide-react';
+import { Share2, Sparkles, Check, Clock, Calendar, CheckCircle2, RefreshCw, Send, ShieldCheck, Tag, ExternalLink } from 'lucide-react';
 
 interface MultiPublishModalProps {
   clipsToPublish: ViralClip[];
@@ -39,6 +39,7 @@ export const MultiPublishModal: React.FC<MultiPublishModalProps> = ({
   const [publishingClipIndex, setPublishingClipIndex] = useState(0);
   const [publishProgress, setPublishProgress] = useState(0);
   const [publishSuccess, setPublishSuccess] = useState(false);
+  const [apiNotice, setApiNotice] = useState<{ message: string; enableUrl?: string } | null>(null);
 
   // AI Title Generator
   const [aiSuggestions, setAiSuggestions] = useState(() =>
@@ -55,6 +56,7 @@ export const MultiPublishModal: React.FC<MultiPublishModalProps> = ({
   const handleStartPublish = async () => {
     setIsPublishing(true);
     setPublishProgress(5);
+    setApiNotice(null);
 
     try {
       const totalClips = clipsToPublish.length;
@@ -77,13 +79,21 @@ export const MultiPublishModal: React.FC<MultiPublishModalProps> = ({
 
         // Upload to YouTube via Official YouTube Data API v3
         if (destination === 'youtube' || destination === 'both') {
-          await AuthService.uploadVideoToYouTube({
+          const res = await AuthService.uploadVideoToYouTube({
             title: titleToUpload,
             description: descToUpload,
             tags: tagsToUpload,
             categoryId,
-            videoUrl: clip.videoUrl || 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerBlazes.mp4'
+            videoUrl: clip.videoUrl || '',
+            userId: user?.id
           });
+
+          if (res?.error && res.enableUrl) {
+            setApiNotice({
+              message: res.error,
+              enableUrl: res.enableUrl
+            });
+          }
         }
 
         // Publish to Instagram Reels via Meta Graph API
@@ -114,7 +124,7 @@ export const MultiPublishModal: React.FC<MultiPublishModalProps> = ({
         onPublishComplete(clipsToPublish.map(c => c.id));
       }, 2000);
 
-    } catch (err) {
+    } catch (err: any) {
       console.error('Publish error:', err);
       setIsPublishing(false);
       setPublishSuccess(true);
@@ -149,6 +159,26 @@ export const MultiPublishModal: React.FC<MultiPublishModalProps> = ({
           </button>
         </div>
 
+        {/* API Enablement Notice Bar if Google Cloud API requires one-time activation */}
+        {apiNotice && (
+          <div className="p-4 rounded-2xl bg-amber-500/20 border border-amber-500/40 text-amber-200 text-xs space-y-2">
+            <div className="flex items-center justify-between font-bold text-amber-300">
+              <span>⚠️ YouTube Data API Setup Required</span>
+              {apiNotice.enableUrl && (
+                <a
+                  href={apiNotice.enableUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="px-3 py-1 rounded-xl bg-amber-500 text-black font-bold text-[11px] hover:bg-amber-400 transition flex items-center gap-1"
+                >
+                  Enable API in Google Cloud <ExternalLink className="w-3.5 h-3.5" />
+                </a>
+              )}
+            </div>
+            <p>{apiNotice.message}</p>
+          </div>
+        )}
+
         {/* Successful Publish Screen */}
         {publishSuccess ? (
           <div className="py-12 text-center space-y-4 animate-in zoom-in-95">
@@ -159,7 +189,7 @@ export const MultiPublishModal: React.FC<MultiPublishModalProps> = ({
               {publishMode === 'schedule' ? 'Videos Scheduled Successfully!' : `Uploaded All (${clipsToPublish.length}) Videos Directly to YouTube!`}
             </h3>
             <p className="text-sm text-zinc-300 max-w-md mx-auto">
-              All {clipsToPublish.length} generated Short(s) have been uploaded automatically via official APIs to {connectedChannel?.name || 'your connected YouTube Channel'}.
+              All {clipsToPublish.length} generated Short(s) have been processed and uploaded to {connectedChannel?.name || 'your connected YouTube Channel'}.
             </p>
           </div>
         ) : (
