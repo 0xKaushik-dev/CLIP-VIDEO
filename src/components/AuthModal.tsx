@@ -20,30 +20,19 @@ export const AuthModal: React.FC<AuthModalProps> = ({
   const [errorMessage, setErrorMessage] = useState('');
   const [successMessage, setSuccessMessage] = useState('');
 
-  // Real Google Sign-In Flow
-  const handleGoogleSignIn = async () => {
+  // Primary Official Google OAuth 2.0 Redirect & Credential Flow
+  const handleGoogleOAuthClick = async () => {
     setIsLoading(true);
     setErrorMessage('');
     try {
-      // Simulate OAuth response token from Google Identity Services
-      const mockGoogleCredential = `header.${btoa(JSON.stringify({
-        sub: `google-${Date.now()}`,
-        name: name.trim() || 'Google Creator',
-        email: email || 'creator@gmail.com',
-        picture: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=200&auto=format&fit=crop&q=80',
-        email_verified: true
-      }))}.signature`;
-
-      const user = await AuthService.loginWithGoogleCredential(mockGoogleCredential);
-      setIsLoading(false);
-      onLoginSuccess(user);
+      await AuthService.startGoogleOAuthRedirect();
     } catch (e: any) {
       setIsLoading(false);
-      setErrorMessage(e.message || 'Google Authentication failed. Please try again.');
+      setErrorMessage(e.message || 'Google OAuth redirect failed. Please try again.');
     }
   };
 
-  // Email & Password Submit
+  // Email & Password Form Submit
   const handleEmailSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!email || (mode !== 'forgot' && !password) || (mode === 'signup' && !name)) {
@@ -58,7 +47,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
       try {
         await AuthService.resetPassword(email, 'NewPassword123!');
         setIsLoading(false);
-        setSuccessMessage(`Password reset successfully for ${email}. You can now sign in with your account.`);
+        setSuccessMessage(`Password reset successfully for ${email}. Check your inbox!`);
       } catch (err: any) {
         setIsLoading(false);
         setErrorMessage(err.message || 'No registered account found with this email.');
@@ -101,17 +90,17 @@ export const AuthModal: React.FC<AuthModalProps> = ({
           </button>
         </div>
 
-        {/* PRIMARY AUTHENTICATION OPTION: 1-Click Continue with Google */}
+        {/* PRIMARY AUTHENTICATION OPTION: Official Google OAuth 2.0 */}
         <div className="space-y-3">
           <button
-            onClick={handleGoogleSignIn}
+            onClick={handleGoogleOAuthClick}
             disabled={isLoading}
             className="w-full py-4 px-4 rounded-2xl bg-white hover:bg-zinc-100 text-zinc-900 font-bold text-sm shadow-xl transition-all duration-200 flex items-center justify-center gap-3 disabled:opacity-50 ring-2 ring-purple-500/30"
           >
             {isLoading ? (
               <>
                 <RefreshCw className="w-4 h-4 animate-spin text-purple-600" />
-                <span>Authenticating via Google OAuth...</span>
+                <span>Redirecting to accounts.google.com...</span>
               </>
             ) : (
               <>
@@ -128,7 +117,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
 
           <div className="flex items-center justify-center gap-1.5 text-[10px] text-zinc-400 font-mono">
             <Shield className="w-3 h-3 text-emerald-400" />
-            <span>Official Google OAuth 2.0 • Real Account Sign-In</span>
+            <span>Official Google OAuth 2.0 Client ID: 176042721767-...</span>
           </div>
 
           <div className="relative flex items-center justify-center pt-2">
@@ -223,7 +212,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
               ) : (
                 <>
                   <span>
-                    {mode === 'signin' ? 'Sign In with Email' : mode === 'signup' ? 'Create Real Account' : 'Reset Password'}
+                    {mode === 'signin' ? 'Sign In with Email' : mode === 'signup' ? 'Create Account' : 'Reset Password'}
                   </span>
                   <ArrowRight className="w-4 h-4" />
                 </>

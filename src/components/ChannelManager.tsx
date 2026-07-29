@@ -1,43 +1,24 @@
 import React, { useState } from 'react';
 import type { ConnectedChannel, PlatformId } from '../types';
 import { CONNECTED_CHANNELS } from '../lib/mockData';
-import { Plus, RefreshCw, Trash2, ShieldCheck, RefreshCcw } from 'lucide-react';
+import { AuthService } from '../lib/authService';
+import { RefreshCw, Trash2, ShieldCheck, RefreshCcw, ExternalLink } from 'lucide-react';
 
 export const ChannelManager: React.FC = () => {
   const [channels, setChannels] = useState<ConnectedChannel[]>(CONNECTED_CHANNELS);
   const [connectingPlatform, setConnectingPlatform] = useState<PlatformId | null>(null);
 
-  const handleConnect = (pId: PlatformId) => {
+  const handleConnectOAuth = (pId: PlatformId) => {
     setConnectingPlatform(pId);
-    setTimeout(() => {
-      setChannels(channels.map(c => c.platform === pId ? {
-        ...c,
-        connected: true,
-        lastSync: `Connected (official ${pId} API)`,
-        oauthScopes: pId === 'youtube'
-          ? ['https://www.googleapis.com/auth/youtube.upload']
-          : ['instagram_content_publish']
-      } : c));
-      setConnectingPlatform(null);
-    }, 1200);
+    if (pId === 'youtube') {
+      AuthService.startYouTubeOAuthRedirect();
+    } else {
+      AuthService.startInstagramOAuthRedirect();
+    }
   };
 
   const handleDisconnect = (id: string) => {
-    setChannels(channels.map(c => c.id === id ? { ...c, connected: false } : c));
-  };
-
-  const handleSwitchAccount = (pId: PlatformId) => {
-    setConnectingPlatform(pId);
-    setTimeout(() => {
-      setChannels(channels.map(c => c.platform === pId ? {
-        ...c,
-        name: pId === 'youtube' ? 'Alternate YouTube Creator' : 'Alternate Insta Reels',
-        handle: pId === 'youtube' ? '@AltCreatorShorts' : '@alt.reels.official',
-        connected: true,
-        lastSync: 'Switched to new account'
-      } : c));
-      setConnectingPlatform(null);
-    }, 1200);
+    setChannels(channels.map(c => c.id === id ? { ...c, connected: false, lastSync: 'Disconnected' } : c));
   };
 
   const toggleAutoPost = (id: string) => {
@@ -57,7 +38,7 @@ export const ChannelManager: React.FC = () => {
             </span>
           </div>
           <p className="text-xs text-zinc-400 mt-1">
-            Securely connect and manage your YouTube and Instagram accounts for direct automated video publishing
+            Authenticate directly via Google OAuth 2.0 and Meta Graph API to upload videos automatically
           </p>
         </div>
       </div>
@@ -68,7 +49,7 @@ export const ChannelManager: React.FC = () => {
           <div
             key={chan.id}
             className={`glass-card p-6 rounded-3xl border transition-all duration-300 flex flex-col justify-between space-y-6 ${
-              chan.connected ? 'border-purple-500/40 bg-zinc-900/80 shadow-xl' : 'border-white/10 opacity-75'
+              chan.connected ? 'border-purple-500/40 bg-zinc-900/80 shadow-xl' : 'border-white/10 opacity-80'
             }`}
           >
             {/* Channel Top Header */}
@@ -98,23 +79,21 @@ export const ChannelManager: React.FC = () => {
             </div>
 
             {/* Connection Details & API Scope */}
-            <div className="space-y-2 text-xs p-3 rounded-2xl bg-zinc-950/80 border border-white/10">
+            <div className="space-y-2 text-xs p-3.5 rounded-2xl bg-zinc-950/80 border border-white/10">
               <div className="flex justify-between text-zinc-300">
-                <span>Audience Count:</span>
+                <span>Audience Status:</span>
                 <span className="font-bold text-white font-mono">{chan.subscribers}</span>
               </div>
               <div className="flex justify-between text-zinc-300">
-                <span>API Status:</span>
+                <span>OAuth Sync:</span>
                 <span className="text-purple-300 font-mono font-semibold">{chan.lastSync}</span>
               </div>
-              {chan.connected && (
-                <div className="flex justify-between text-zinc-400 text-[10px] font-mono pt-1 border-t border-white/5">
-                  <span>OAuth Scope:</span>
-                  <span className="text-emerald-400">
-                    {chan.platform === 'youtube' ? 'youtube.upload' : 'instagram_content_publish'}
-                  </span>
-                </div>
-              )}
+              <div className="flex justify-between text-zinc-400 text-[10px] font-mono pt-1.5 border-t border-white/5">
+                <span>OAuth Scope:</span>
+                <span className="text-emerald-400">
+                  {chan.platform === 'youtube' ? 'youtube.upload' : 'instagram_content_publish'}
+                </span>
+              </div>
             </div>
 
             {/* Auto-Posting Preference Switch */}
@@ -122,7 +101,7 @@ export const ChannelManager: React.FC = () => {
               <div className="flex items-center justify-between p-3 rounded-2xl bg-zinc-950 border border-white/10 text-xs">
                 <div className="space-y-0.5">
                   <span className="font-bold text-white block">Auto-Publish Preference</span>
-                  <span className="text-[10px] text-zinc-400">Automatically upload new generated Shorts/Reels</span>
+                  <span className="text-[10px] text-zinc-400">Automatically upload generated videos</span>
                 </div>
                 <button
                   onClick={() => toggleAutoPost(chan.id)}
@@ -137,15 +116,15 @@ export const ChannelManager: React.FC = () => {
               </div>
             )}
 
-            {/* Bottom Actions: Connect, Switch Account, Disconnect */}
+            {/* Bottom Actions: Connect via Official OAuth */}
             <div className="pt-2">
               {chan.connected ? (
                 <div className="flex items-center gap-2">
                   <button
-                    onClick={() => handleSwitchAccount(chan.platform)}
+                    onClick={() => handleConnectOAuth(chan.platform)}
                     className="flex-1 py-2.5 rounded-xl bg-zinc-900 hover:bg-zinc-800 text-zinc-200 text-xs font-semibold border border-white/10 transition flex items-center justify-center gap-1.5"
                   >
-                    <RefreshCcw className="w-3.5 h-3.5 text-purple-400" /> Switch Account
+                    <RefreshCcw className="w-3.5 h-3.5 text-purple-400" /> Reconnect OAuth
                   </button>
                   <button
                     onClick={() => handleDisconnect(chan.id)}
@@ -156,19 +135,19 @@ export const ChannelManager: React.FC = () => {
                 </div>
               ) : (
                 <button
-                  onClick={() => handleConnect(chan.platform)}
+                  onClick={() => handleConnectOAuth(chan.platform)}
                   disabled={connectingPlatform === chan.platform}
-                  className="w-full py-3 rounded-2xl bg-gradient-to-r from-purple-600 to-pink-600 hover:opacity-95 text-white text-xs font-bold shadow transition flex items-center justify-center gap-2"
+                  className="w-full py-3.5 rounded-2xl bg-gradient-to-r from-purple-600 to-pink-600 hover:opacity-95 text-white text-xs font-bold shadow-lg transition flex items-center justify-center gap-2"
                 >
                   {connectingPlatform === chan.platform ? (
                     <>
                       <RefreshCw className="w-4 h-4 animate-spin" />
-                      <span>Authenticating Official OAuth...</span>
+                      <span>Redirecting to Official OAuth...</span>
                     </>
                   ) : (
                     <>
-                      <Plus className="w-4 h-4" />
-                      <span>Connect {chan.platform === 'youtube' ? 'YouTube Channel' : 'Instagram Account'}</span>
+                      <ExternalLink className="w-4 h-4" />
+                      <span>Connect {chan.platform === 'youtube' ? 'YouTube via Google OAuth 2.0' : 'Instagram via Meta Graph API'}</span>
                     </>
                   )}
                 </button>
