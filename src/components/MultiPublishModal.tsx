@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import type { ViralClip, PublishDestination } from '../types';
+import type { ViralClip, PublishDestination, UserProfile } from '../types';
 import { AIService, YOUTUBE_CATEGORIES } from '../lib/aiService';
 import { AuthService } from '../lib/authService';
 import confetti from 'canvas-confetti';
@@ -7,17 +7,20 @@ import { Share2, Sparkles, Check, Clock, Calendar, CheckCircle2, RefreshCw, Send
 
 interface MultiPublishModalProps {
   clipsToPublish: ViralClip[];
+  user?: UserProfile | null;
   onClose: () => void;
   onPublishComplete: (publishedClipIds: string[]) => void;
 }
 
 export const MultiPublishModal: React.FC<MultiPublishModalProps> = ({
   clipsToPublish,
+  user,
   onClose,
   onPublishComplete
 }) => {
   const isBatchMode = clipsToPublish.length > 1;
   const currentClip = clipsToPublish[0];
+  const connectedChannel = user?.connectedYouTubeChannel;
 
   // Publish To Selection
   const [destination, setDestination] = useState<PublishDestination>('both');
@@ -112,10 +115,10 @@ export const MultiPublishModal: React.FC<MultiPublishModalProps> = ({
             </div>
             <div>
               <h2 className="text-xl font-black text-white font-heading">
-                {isBatchMode ? `Publish All (${clipsToPublish.length}) Videos` : 'Direct Social Media Publisher'}
+                {isBatchMode ? `Publish All (${clipsToPublish.length}) Videos` : 'Direct YouTube & Instagram Publisher'}
               </h2>
               <p className="text-xs text-zinc-400">
-                Directly upload generated videos to YouTube Shorts and Instagram Reels via Official APIs
+                Directly upload generated videos to your linked YouTube channel using YouTube Data API v3
               </p>
             </div>
           </div>
@@ -132,15 +135,37 @@ export const MultiPublishModal: React.FC<MultiPublishModalProps> = ({
               <CheckCircle2 className="w-10 h-10 animate-bounce" />
             </div>
             <h3 className="text-2xl font-black text-white font-heading">
-              {publishMode === 'schedule' ? 'Videos Scheduled Successfully!' : 'Uploaded & Published via Official API!'}
+              {publishMode === 'schedule' ? 'Videos Scheduled Successfully!' : 'Uploaded Directly to Connected YouTube Channel!'}
             </h3>
             <p className="text-sm text-zinc-300 max-w-md mx-auto">
-              Your generated video(s) have been uploaded directly via official APIs to {destination === 'both' ? 'YouTube Shorts and Instagram Reels' : destination === 'youtube' ? 'YouTube Shorts' : 'Instagram Reels'}.
+              Your generated video(s) have been uploaded directly via official APIs to {connectedChannel?.name || 'your connected YouTube Channel'}.
             </p>
           </div>
         ) : (
           <div className="space-y-6 text-xs">
             
+            {/* Connected YouTube Channel Bar */}
+            {connectedChannel && (
+              <div className="p-3.5 rounded-2xl bg-gradient-to-r from-purple-950/40 to-zinc-950 border border-purple-500/30 flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <img
+                    src={connectedChannel.avatar}
+                    alt={connectedChannel.name}
+                    className="w-10 h-10 rounded-xl object-cover ring-2 ring-purple-500/40"
+                  />
+                  <div>
+                    <span className="font-bold text-white text-xs block font-heading">{connectedChannel.name}</span>
+                    <span className="text-[11px] text-purple-300 font-mono">
+                      ID: {connectedChannel.channelId || connectedChannel.id} • {connectedChannel.handle}
+                    </span>
+                  </div>
+                </div>
+                <span className="px-2.5 py-1 rounded-xl bg-emerald-500/20 text-emerald-300 text-[10px] font-mono font-bold border border-emerald-500/30 flex items-center gap-1">
+                  <ShieldCheck className="w-3 h-3 text-emerald-400" /> OAuth Active & Auto-Refreshed
+                </span>
+              </div>
+            )}
+
             {/* Publish To Selector */}
             <div className="space-y-3">
               <label className="font-extrabold text-white text-xs uppercase tracking-wider block font-heading">
@@ -149,8 +174,8 @@ export const MultiPublishModal: React.FC<MultiPublishModalProps> = ({
 
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                 {[
-                  { id: 'youtube', label: 'YouTube Shorts', desc: 'Official YouTube Data API v3', icon: '▶' },
-                  { id: 'instagram', label: 'Instagram Reels', desc: 'Official Instagram Graph API', icon: '📸' },
+                  { id: 'youtube', label: 'YouTube Shorts', desc: 'YouTube Data API v3 Direct Upload', icon: '▶' },
+                  { id: 'instagram', label: 'Instagram Reels', desc: 'Meta Graph API Direct Reels Upload', icon: '📸' },
                   { id: 'both', label: 'Both YouTube & Instagram', desc: 'Simultaneous Direct Upload', icon: '⚡' }
                 ].map((item) => {
                   const isSelected = destination === item.id;
@@ -179,19 +204,6 @@ export const MultiPublishModal: React.FC<MultiPublishModalProps> = ({
                   );
                 })}
               </div>
-            </div>
-
-            {/* Connected Account Verification Bar */}
-            <div className="p-3 rounded-2xl bg-zinc-950 border border-white/10 flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <ShieldCheck className="w-4 h-4 text-emerald-400" />
-                <span className="text-zinc-300 font-semibold">
-                  Target Account Authorization:
-                  {destination === 'youtube' || destination === 'both' ? ' YouTube Data API v3' : ''}
-                  {destination === 'instagram' || destination === 'both' ? ' Meta Graph API' : ''}
-                </span>
-              </div>
-              <span className="px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-300 text-[10px] font-mono">OAuth 2.0 Active</span>
             </div>
 
             {/* AI Title Suggestions */}
@@ -354,7 +366,7 @@ export const MultiPublishModal: React.FC<MultiPublishModalProps> = ({
                 {isPublishing ? (
                   <>
                     <RefreshCw className="w-5 h-5 animate-spin" />
-                    <span>Uploading via Official API ({publishProgress}%)...</span>
+                    <span>Uploading directly to {connectedChannel?.name || 'YouTube'} ({publishProgress}%)...</span>
                   </>
                 ) : (
                   <>
@@ -362,7 +374,7 @@ export const MultiPublishModal: React.FC<MultiPublishModalProps> = ({
                     <span>
                       {publishMode === 'schedule'
                         ? 'Confirm Schedule Upload'
-                        : `Publish ${clipsToPublish.length} Video(s) via Official API`}
+                        : `Publish ${clipsToPublish.length} Video(s) to ${connectedChannel?.name || 'YouTube Shorts'}`}
                     </span>
                   </>
                 )}

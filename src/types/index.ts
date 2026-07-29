@@ -118,5 +118,7 @@ export interface UserProfile {
   authProvider?: 'google' | 'email';
   isGoogleLinked?: boolean;
   emailVerified?: boolean;
+  connectedYouTubeChannel?: ConnectedChannel;
+  availableYouTubeChannels?: ConnectedChannel[];
   createdAt?: string;
 }
