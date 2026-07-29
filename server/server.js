@@ -20,7 +20,7 @@ const REDIRECT_URI = process.env.REDIRECT_URI || 'http://localhost:3001/api/auth
 const YOUTUBE_REDIRECT_URI = process.env.YOUTUBE_REDIRECT_URI || 'http://localhost:3001/api/auth/youtube/callback';
 
 // Middleware
-app.use(cors({ origin: [CLIENT_URL, 'http://localhost:5173', 'http://localhost:5174', 'http://localhost:5175', 'http://localhost:5176', 'http://localhost:5177', 'http://localhost:5178'], credentials: true }));
+app.use(cors({ origin: [CLIENT_URL, 'http://localhost:5173', 'http://localhost:5174', 'http://localhost:5175', 'http://localhost:5176', 'http://localhost:5177', 'http://localhost:5178', 'http://localhost:5179'], credentials: true }));
 app.use(express.json());
 app.use(cookieParser());
 
@@ -67,12 +67,12 @@ app.get('/api/auth/google/callback', async (req, res) => {
   }
 
   try {
-    const { tokens } = await googleOAuthClient.getToken(code as string);
+    const { tokens } = await googleOAuthClient.getToken(code.toString());
     googleOAuthClient.setCredentials(tokens);
 
     // Verify ID token with Google's public key
     const ticket = await googleOAuthClient.verifyIdToken({
-      idToken: tokens.id_token!,
+      idToken: tokens.id_token,
       audience: GOOGLE_CLIENT_ID
     });
     const payload = ticket.getPayload();
@@ -100,7 +100,7 @@ app.get('/api/auth/google/callback', async (req, res) => {
     res.cookie('shortsforge_session', sessionToken, { httpOnly: true, maxAge: 7 * 24 * 3600 * 1000 });
 
     res.redirect(`${CLIENT_URL}?auth_success=true&user=${encodeURIComponent(JSON.stringify(user))}`);
-  } catch (error: any) {
+  } catch (error) {
     console.error('Google OAuth Callback Error:', error);
     res.redirect(`${CLIENT_URL}?auth_error=${encodeURIComponent(error.message || 'auth_failed')}`);
   }
@@ -140,7 +140,7 @@ app.post('/api/auth/google/verify', async (req, res) => {
     res.cookie('shortsforge_session', sessionToken, { httpOnly: true });
 
     res.json({ user, sessionToken });
-  } catch (error: any) {
+  } catch (error) {
     console.error('Google ID Token verification failed:', error);
     res.status(401).json({ error: 'Google authentication failed: ' + error.message });
   }
@@ -171,7 +171,7 @@ app.get('/api/auth/youtube/callback', async (req, res) => {
   }
 
   try {
-    const { tokens } = await youtubeOAuthClient.getToken(code as string);
+    const { tokens } = await youtubeOAuthClient.getToken(code.toString());
     youtubeOAuthClient.setCredentials(tokens);
 
     // Fetch real authenticated YouTube channel details
@@ -201,7 +201,7 @@ app.get('/api/auth/youtube/callback', async (req, res) => {
     channelStore.set('youtube', channelData);
 
     res.redirect(`${CLIENT_URL}?yt_success=true&channel=${encodeURIComponent(JSON.stringify(channelData))}`);
-  } catch (error: any) {
+  } catch (error) {
     console.error('YouTube OAuth Callback Error:', error);
     res.redirect(`${CLIENT_URL}?yt_error=${encodeURIComponent(error.message || 'yt_failed')}`);
   }
@@ -250,7 +250,7 @@ app.post('/api/youtube/upload', async (req, res) => {
       videoUrl: `https://youtube.com/shorts/${response.data.id}`,
       status: response.data.status
     });
-  } catch (error: any) {
+  } catch (error) {
     console.error('YouTube Upload Error:', error?.response?.data || error.message);
     res.status(500).json({ error: 'YouTube upload failed: ' + (error?.response?.data?.error?.message || error.message) });
   }
@@ -291,7 +291,7 @@ app.get('/api/auth/instagram/callback', async (req, res) => {
 
     channelStore.set('instagram', channelData);
     res.redirect(`${CLIENT_URL}?ig_success=true&channel=${encodeURIComponent(JSON.stringify(channelData))}`);
-  } catch (error: any) {
+  } catch (error) {
     res.redirect(`${CLIENT_URL}?ig_error=${encodeURIComponent(error.message)}`);
   }
 });
@@ -313,7 +313,7 @@ app.post('/api/instagram/publish', async (req, res) => {
       status: 'PUBLISHED',
       message: 'Reel published directly via Meta Graph API'
     });
-  } catch (error: any) {
+  } catch (error) {
     res.status(500).json({ error: 'Instagram Reels publishing failed: ' + error.message });
   }
 });
