@@ -35,6 +35,26 @@ export function App() {
   const [publishingClips, setPublishingClips] = useState<ViralClip[] | null>(null);
   const [showAuthModal, setShowAuthModal] = useState(false);
 
+  // Handle URL Query Params from OAuth Callbacks
+  useEffect(() => {
+    try {
+      const params = new URLSearchParams(window.location.search);
+      const authSuccess = params.get('auth_success');
+      const userParam = params.get('user');
+
+      if (authSuccess === 'true' && userParam) {
+        const parsedUser: UserProfile = JSON.parse(decodeURIComponent(userParam));
+        setUser(parsedUser);
+        AuthService.saveSession(parsedUser);
+        const userSavedClips = AuthService.getUserClips(parsedUser.id);
+        setClips(userSavedClips);
+        window.history.replaceState({}, document.title, window.location.pathname);
+      }
+    } catch (e) {
+      console.error('OAuth Callback Parse Error:', e);
+    }
+  }, []);
+
   // Sync user session & per-user clips storage
   useEffect(() => {
     if (user) {
