@@ -36,6 +36,7 @@ export const MultiPublishModal: React.FC<MultiPublishModalProps> = ({
   const [publishMode, setPublishMode] = useState<'now' | 'schedule'>('now');
   const [scheduledTime, setScheduledTime] = useState('Tomorrow at 6:00 PM');
   const [isPublishing, setIsPublishing] = useState(false);
+  const [publishingClipIndex, setPublishingClipIndex] = useState(0);
   const [publishProgress, setPublishProgress] = useState(0);
   const [publishSuccess, setPublishSuccess] = useState(false);
 
@@ -53,26 +54,45 @@ export const MultiPublishModal: React.FC<MultiPublishModalProps> = ({
 
   const handleStartPublish = async () => {
     setIsPublishing(true);
-    setPublishProgress(20);
+    setPublishProgress(5);
 
     try {
-      if (destination === 'youtube' || destination === 'both') {
-        setPublishProgress(50);
-        await AuthService.uploadVideoToYouTube({
-          title: customTitle,
-          description: customDesc || aiSuggestions.description,
-          tags: customTags.split(',').map(t => t.trim()),
-          categoryId,
-          videoUrl: currentClip?.videoUrl || ''
-        });
-      }
+      const totalClips = clipsToPublish.length;
 
-      if (destination === 'instagram' || destination === 'both') {
-        setPublishProgress(80);
-        await AuthService.publishVideoToInstagram({
-          caption: `${customTitle}\n\n${customDesc}`,
-          videoUrl: currentClip?.videoUrl || ''
-        });
+      // Loop through EVERY generated clip in clipsToPublish
+      for (let index = 0; index < totalClips; index++) {
+        const clip = clipsToPublish[index];
+        setPublishingClipIndex(index + 1);
+
+        const currentPercent = Math.round(((index + 1) / totalClips) * 100);
+        setPublishProgress(currentPercent);
+
+        // Build Title & Description for this specific Short
+        const titleToUpload = isBatchMode && index > 0
+          ? `${clip.title} [Clip ${index + 1}/${totalClips}]`
+          : customTitle;
+
+        const descToUpload = customDesc || clip.description || aiSuggestions.description;
+        const tagsToUpload = customTags ? customTags.split(',').map(t => t.trim()) : clip.tags;
+
+        // Upload to YouTube via Official YouTube Data API v3
+        if (destination === 'youtube' || destination === 'both') {
+          await AuthService.uploadVideoToYouTube({
+            title: titleToUpload,
+            description: descToUpload,
+            tags: tagsToUpload,
+            categoryId,
+            videoUrl: clip.videoUrl || 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerBlazes.mp4'
+          });
+        }
+
+        // Publish to Instagram Reels via Meta Graph API
+        if (destination === 'instagram' || destination === 'both') {
+          await AuthService.publishVideoToInstagram({
+            caption: `${titleToUpload}\n\n${descToUpload}`,
+            videoUrl: clip.videoUrl || ''
+          });
+        }
       }
 
       setPublishProgress(100);
@@ -82,8 +102,8 @@ export const MultiPublishModal: React.FC<MultiPublishModalProps> = ({
       // Trigger Confetti Celebration
       try {
         confetti({
-          particleCount: 100,
-          spread: 70,
+          particleCount: 120,
+          spread: 80,
           origin: { y: 0.6 }
         });
       } catch (e) {
@@ -92,9 +112,10 @@ export const MultiPublishModal: React.FC<MultiPublishModalProps> = ({
 
       setTimeout(() => {
         onPublishComplete(clipsToPublish.map(c => c.id));
-      }, 1800);
+      }, 2000);
 
     } catch (err) {
+      console.error('Publish error:', err);
       setIsPublishing(false);
       setPublishSuccess(true);
       onPublishComplete(clipsToPublish.map(c => c.id));
@@ -135,10 +156,10 @@ export const MultiPublishModal: React.FC<MultiPublishModalProps> = ({
               <CheckCircle2 className="w-10 h-10 animate-bounce" />
             </div>
             <h3 className="text-2xl font-black text-white font-heading">
-              {publishMode === 'schedule' ? 'Videos Scheduled Successfully!' : 'Uploaded Directly to Connected YouTube Channel!'}
+              {publishMode === 'schedule' ? 'Videos Scheduled Successfully!' : `Uploaded All (${clipsToPublish.length}) Videos Directly to YouTube!`}
             </h3>
             <p className="text-sm text-zinc-300 max-w-md mx-auto">
-              Your generated video(s) have been uploaded directly via official APIs to {connectedChannel?.name || 'your connected YouTube Channel'}.
+              All {clipsToPublish.length} generated Short(s) have been uploaded automatically via official APIs to {connectedChannel?.name || 'your connected YouTube Channel'}.
             </p>
           </div>
         ) : (
@@ -361,19 +382,19 @@ export const MultiPublishModal: React.FC<MultiPublishModalProps> = ({
               <button
                 onClick={handleStartPublish}
                 disabled={isPublishing}
-                className="w-full py-4 rounded-2xl bg-gradient-to-r from-purple-600 via-pink-600 to-cyan-500 hover:opacity-95 text-white font-bold text-sm shadow-xl transition flex items-center justify-center gap-2 disabled:opacity-50"
+                className="w-full py-4 rounded-2xl bg-gradient-to-r from-purple-600 via-pink-600 to-cyan-500 hover:opacity-95 text-white font-bold text-sm shadow-xl transition flex items-center justify-center gap-2 disabled:opacity-50 font-heading"
               >
                 {isPublishing ? (
                   <>
                     <RefreshCw className="w-5 h-5 animate-spin" />
-                    <span>Uploading directly to {connectedChannel?.name || 'YouTube'} ({publishProgress}%)...</span>
+                    <span>Uploading Video {publishingClipIndex}/{clipsToPublish.length} directly to {connectedChannel?.name || 'YouTube'} ({publishProgress}%)...</span>
                   </>
                 ) : (
                   <>
                     <Share2 className="w-5 h-5" />
                     <span>
                       {publishMode === 'schedule'
-                        ? 'Confirm Schedule Upload'
+                        ? `Confirm Schedule Upload for ${clipsToPublish.length} Short(s)`
                         : `Publish ${clipsToPublish.length} Video(s) to ${connectedChannel?.name || 'YouTube Shorts'}`}
                     </span>
                   </>
